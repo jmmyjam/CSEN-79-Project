@@ -1,6 +1,10 @@
 // FILE: binary_tree_node.h
-// PROVIDES: the binary_tree_node class, one node of a binary tree. Each node
-//           holds an item and links to its left and right children.
+// PROVIDES: the binary_tree_node<Item> template class, one node of a binary
+//           tree. Each node holds an item and links to its left and right
+//           children.
+//
+// Item may be any type with a default constructor, a copy constructor, and
+// an assignment operator.
 
 #ifndef BINARY_TREE_NODE_H
 #define BINARY_TREE_NODE_H
@@ -9,18 +13,19 @@
 
 namespace alert_service
 {
+    template <class Item>
     class binary_tree_node
     {
     public:
         // TYPEDEF
-        typedef double value_type;
+        typedef Item value_type;
 
         // CONSTRUCTOR
 
         // binary_tree_node(init_data, init_left_link, init_right_link)
         //   Postcondition: The node holds init_data, and its children are
         //                  init_left_link and init_right_link.
-        binary_tree_node(const value_type &init_data = value_type(), binary_tree_node *init_left_link = NULL, binary_tree_node *init_right_link = NULL)
+        binary_tree_node(const Item &init_data = Item(), binary_tree_node *init_left_link = NULL, binary_tree_node *init_right_link = NULL)
         {
             data_field = init_data;
             left_field = init_left_link;
@@ -29,14 +34,14 @@ namespace alert_service
 
         // Member functions
 
-        // value_type &data()
+        // Item &data()
         //   Postcondition: Returns a reference to this node's item, which can
         //                  be changed through it.
-        value_type &data() { return data_field; }
+        Item &data() { return data_field; }
 
-        // void set_data(const value_type &new_data)
+        // void set_data(const Item &new_data)
         //   Postcondition: This node's item is now new_data.
-        void set_data(const value_type &new_data) { data_field = new_data; }
+        void set_data(const Item &new_data) { data_field = new_data; }
 
         // void set_left(binary_tree_node *new_link)
         //   Postcondition: This node's left child is now new_link.
@@ -58,9 +63,9 @@ namespace alert_service
 
         // Constant member functions
 
-        // const value_type &data() const
+        // const Item &data() const
         //   Postcondition: Returns a read-only reference to this node's item.
-        const value_type &data() const { return data_field; }
+        const Item &data() const { return data_field; }
 
         // const binary_tree_node *left() const
         //   Postcondition: Returns a read-only pointer to the left child, or NULL.
@@ -71,7 +76,7 @@ namespace alert_service
         const binary_tree_node *right() const { return right_field; }
 
     private:
-        value_type data_field;
+        Item data_field;
         binary_tree_node *left_field;
         binary_tree_node *right_field;
     };

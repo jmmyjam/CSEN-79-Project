@@ -1,21 +1,30 @@
+// FILE: linked_list.template
+// IMPLEMENTS: the linked_list<Item> template class (see linked_list.h).
+// This file is included by linked_list.h; do not compile it on its own.
+
 #include <cassert> // Provides assert
-#include "linked_list.h"
 
 namespace alert_service
 {
-    size_t linked_list::comparisons = 0;
-    size_t linked_list::nodes_visited = 0;
-    size_t linked_list::allocations = 0;
-    size_t linked_list::deallocations = 0;
+    template <class Item>
+    size_t linked_list<Item>::comparisons = 0;
+    template <class Item>
+    size_t linked_list<Item>::nodes_visited = 0;
+    template <class Item>
+    size_t linked_list<Item>::allocations = 0;
+    template <class Item>
+    size_t linked_list<Item>::deallocations = 0;
 
-    linked_list::linked_list()
+    template <class Item>
+    linked_list<Item>::linked_list()
     {
         head_ptr = NULL;
         tail_ptr = NULL;
         many_nodes = 0;
     }
 
-    linked_list::linked_list(const linked_list &src)
+    template <class Item>
+    linked_list<Item>::linked_list(const linked_list &src)
     {
         head_ptr = NULL;
         tail_ptr = NULL;
@@ -23,12 +32,14 @@ namespace alert_service
         copy_from(src.head_ptr);
     }
 
-    linked_list::~linked_list()
+    template <class Item>
+    linked_list<Item>::~linked_list()
     {
         clear();
     }
 
-    linked_list &linked_list::operator=(const linked_list &src)
+    template <class Item>
+    linked_list<Item> &linked_list<Item>::operator=(const linked_list &src)
     {
         // Self-assignment guard: without it, clear would delete src's
         // nodes before copy_from got a chance to read them.
@@ -40,9 +51,10 @@ namespace alert_service
         return *this;
     }
 
-    void linked_list::head_insert(const node::value_type &entry)
+    template <class Item>
+    void linked_list<Item>::head_insert(const Item &entry)
     {
-        head_ptr = new node(entry, head_ptr);
+        head_ptr = new node<Item>(entry, head_ptr);
         ++allocations;
         ++many_nodes;
 
@@ -50,11 +62,12 @@ namespace alert_service
             tail_ptr = head_ptr;
     }
 
-    void linked_list::insert(node *previous_ptr, const node::value_type &entry)
+    template <class Item>
+    void linked_list<Item>::insert(node<Item> *previous_ptr, const Item &entry)
     {
         assert(previous_ptr != NULL);
 
-        node *insert_ptr = new node(entry, previous_ptr->link());
+        node<Item> *insert_ptr = new node<Item>(entry, previous_ptr->link());
         ++allocations;
         ++many_nodes;
         previous_ptr->set_link(insert_ptr);
@@ -63,11 +76,12 @@ namespace alert_service
             tail_ptr = insert_ptr;
     }
 
-    void linked_list::head_remove()
+    template <class Item>
+    void linked_list<Item>::head_remove()
     {
         assert(head_ptr != NULL);
 
-        node *remove_ptr = head_ptr;
+        node<Item> *remove_ptr = head_ptr;
         head_ptr = head_ptr->link();
         delete remove_ptr;
         ++deallocations;
@@ -77,12 +91,13 @@ namespace alert_service
             tail_ptr = NULL;
     }
 
-    void linked_list::remove(node *previous_ptr)
+    template <class Item>
+    void linked_list<Item>::remove(node<Item> *previous_ptr)
     {
         assert(previous_ptr != NULL);
         assert(previous_ptr->link() != NULL);
 
-        node *remove_ptr = previous_ptr->link();
+        node<Item> *remove_ptr = previous_ptr->link();
         previous_ptr->set_link(remove_ptr->link());
 
         if (remove_ptr == tail_ptr)
@@ -93,15 +108,17 @@ namespace alert_service
         --many_nodes;
     }
 
-    void linked_list::clear()
+    template <class Item>
+    void linked_list<Item>::clear()
     {
         while (head_ptr != NULL)
             head_remove();
     }
 
-    node *linked_list::search(const node::value_type &target)
+    template <class Item>
+    node<Item> *linked_list<Item>::search(const Item &target)
     {
-        for (node *cursor = head_ptr; cursor != NULL; cursor = cursor->link())
+        for (node<Item> *cursor = head_ptr; cursor != NULL; cursor = cursor->link())
         {
             ++nodes_visited;
             ++comparisons;
@@ -112,11 +129,12 @@ namespace alert_service
         return NULL;
     }
 
-    node *linked_list::locate(size_t position)
+    template <class Item>
+    node<Item> *linked_list<Item>::locate(size_t position)
     {
         assert(0 < position);
 
-        node *cursor = head_ptr;
+        node<Item> *cursor = head_ptr;
         for (size_t i = 1; (i < position) && (cursor != NULL); ++i)
         {
             ++nodes_visited;
@@ -126,29 +144,34 @@ namespace alert_service
         return cursor;
     }
 
-    node *linked_list::get_head()
+    template <class Item>
+    node<Item> *linked_list<Item>::get_head()
     {
         return head_ptr;
     }
 
-    node *linked_list::get_tail()
+    template <class Item>
+    node<Item> *linked_list<Item>::get_tail()
     {
         return tail_ptr;
     }
 
-    size_t linked_list::length() const
+    template <class Item>
+    size_t linked_list<Item>::length() const
     {
         return many_nodes;
     }
 
-    bool linked_list::empty() const
+    template <class Item>
+    bool linked_list<Item>::empty() const
     {
         return head_ptr == NULL;
     }
 
-    const node *linked_list::search(const node::value_type &target) const
+    template <class Item>
+    const node<Item> *linked_list<Item>::search(const Item &target) const
     {
-        for (const node *cursor = head_ptr; cursor != NULL; cursor = cursor->link())
+        for (const node<Item> *cursor = head_ptr; cursor != NULL; cursor = cursor->link())
         {
             ++nodes_visited;
             ++comparisons;
@@ -159,11 +182,12 @@ namespace alert_service
         return NULL;
     }
 
-    const node *linked_list::locate(size_t position) const
+    template <class Item>
+    const node<Item> *linked_list<Item>::locate(size_t position) const
     {
         assert(0 < position);
 
-        const node *cursor = head_ptr;
+        const node<Item> *cursor = head_ptr;
         for (size_t i = 1; (i < position) && (cursor != NULL); ++i)
         {
             ++nodes_visited;
@@ -173,37 +197,44 @@ namespace alert_service
         return cursor;
     }
 
-    const node *linked_list::get_head() const
+    template <class Item>
+    const node<Item> *linked_list<Item>::get_head() const
     {
         return head_ptr;
     }
 
-    const node *linked_list::get_tail() const
+    template <class Item>
+    const node<Item> *linked_list<Item>::get_tail() const
     {
         return tail_ptr;
     }
 
-    size_t linked_list::get_comparisons()
+    template <class Item>
+    size_t linked_list<Item>::get_comparisons()
     {
         return comparisons;
     }
 
-    size_t linked_list::get_nodes_visited()
+    template <class Item>
+    size_t linked_list<Item>::get_nodes_visited()
     {
         return nodes_visited;
     }
 
-    size_t linked_list::get_allocations()
+    template <class Item>
+    size_t linked_list<Item>::get_allocations()
     {
         return allocations;
     }
 
-    size_t linked_list::get_deallocations()
+    template <class Item>
+    size_t linked_list<Item>::get_deallocations()
     {
         return deallocations;
     }
 
-    void linked_list::reset_counters()
+    template <class Item>
+    void linked_list<Item>::reset_counters()
     {
         comparisons = 0;
         nodes_visited = 0;
@@ -211,7 +242,8 @@ namespace alert_service
         deallocations = 0;
     }
 
-    void linked_list::print_counters(std::ostream &out)
+    template <class Item>
+    void linked_list<Item>::print_counters(std::ostream &out)
     {
         out << "linked_list comparisons=" << comparisons
             << " nodes_visited=" << nodes_visited
@@ -219,7 +251,8 @@ namespace alert_service
             << " deallocations=" << deallocations << std::endl;
     }
 
-    void linked_list::copy_from(const node *source_ptr)
+    template <class Item>
+    void linked_list<Item>::copy_from(const node<Item> *source_ptr)
     {
         if (source_ptr == NULL)
             return;
