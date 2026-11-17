@@ -130,6 +130,19 @@ namespace alert_service
 
         // Recursive helpers
 
+        // bool remove_at(binary_tree_node *&subtree_ptr, const binary_tree_node::value_type &target)
+        //   Postcondition: If target was in the subtree, it has been removed,
+        //                  subtree_ptr points to the subtree's new root, and
+        //                  true is returned. Otherwise returns false.
+        bool remove_at(binary_tree_node *&subtree_ptr, const binary_tree_node::value_type &target);
+
+        // void remove_max_at(binary_tree_node *&subtree_ptr, binary_tree_node::value_type &removed)
+        //   Precondition:  subtree_ptr is not NULL.
+        //   Postcondition: The largest item in the subtree has been copied into
+        //                  removed and its node deleted, and subtree_ptr points
+        //                  to the subtree's new root.
+        void remove_max_at(binary_tree_node *&subtree_ptr, binary_tree_node::value_type &removed);
+
         // size_t subtree_height(const binary_tree_node *subtree_ptr) const
         //   Postcondition: Returns the height of the subtree rooted at
         //                  subtree_ptr, or 0 if subtree_ptr is NULL.
