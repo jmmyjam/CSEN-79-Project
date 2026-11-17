@@ -12,17 +12,118 @@ namespace alert_service
     {
         head_ptr = NULL;
         tail_ptr = NULL;
+        many_nodes = 0;
     }
 
     linked_list::linked_list(const linked_list &src)
     {
-        list_copy(src.head_ptr, head_ptr, tail_ptr);
+        head_ptr = NULL;
+        tail_ptr = NULL;
+        many_nodes = 0;
+        copy_from(src.head_ptr);
     }
 
     linked_list::~linked_list()
     {
-        list_clear(head_ptr);
-        tail_ptr = NULL;
+        clear();
+    }
+
+    linked_list &linked_list::operator=(const linked_list &src)
+    {
+        // Self-assignment guard: without it, clear would delete src's
+        // nodes before copy_from got a chance to read them.
+        if (this == &src)
+            return *this;
+
+        clear();
+        copy_from(src.head_ptr);
+        return *this;
+    }
+
+    void linked_list::head_insert(const node::value_type &entry)
+    {
+        head_ptr = new node(entry, head_ptr);
+        ++allocations;
+        ++many_nodes;
+
+        if (tail_ptr == NULL)
+            tail_ptr = head_ptr;
+    }
+
+    void linked_list::insert(node *previous_ptr, const node::value_type &entry)
+    {
+        assert(previous_ptr != NULL);
+
+        node *insert_ptr = new node(entry, previous_ptr->link());
+        ++allocations;
+        ++many_nodes;
+        previous_ptr->set_link(insert_ptr);
+
+        if (previous_ptr == tail_ptr)
+            tail_ptr = insert_ptr;
+    }
+
+    void linked_list::head_remove()
+    {
+        assert(head_ptr != NULL);
+
+        node *remove_ptr = head_ptr;
+        head_ptr = head_ptr->link();
+        delete remove_ptr;
+        ++deallocations;
+        --many_nodes;
+
+        if (head_ptr == NULL)
+            tail_ptr = NULL;
+    }
+
+    void linked_list::remove(node *previous_ptr)
+    {
+        assert(previous_ptr != NULL);
+        assert(previous_ptr->link() != NULL);
+
+        node *remove_ptr = previous_ptr->link();
+        previous_ptr->set_link(remove_ptr->link());
+
+        if (remove_ptr == tail_ptr)
+            tail_ptr = previous_ptr;
+
+        delete remove_ptr;
+        ++deallocations;
+        --many_nodes;
+    }
+
+    void linked_list::clear()
+    {
+        while (head_ptr != NULL)
+            head_remove();
+    }
+
+    node *linked_list::search(const node::value_type &target)
+    {
+        for (node *cursor = head_ptr; cursor != NULL; cursor = cursor->link())
+        {
+            ++nodes_visited;
+            ++comparisons;
+            if (target == cursor->data())
+                return cursor;
+        }
+
+        return NULL;
+    }
+
+    node *linked_list::locate(size_t position)
+    {
+        assert(0 < position);
+
+        node *cursor = head_ptr;
+        for (size_t i = 1; (i < position) && (cursor != NULL); ++i)
+        {
+            ++nodes_visited;
+            cursor = cursor->link();
+        }
+
+        return cursor;
     }
 
     node *linked_list::get_head()
@@ -35,16 +136,41 @@ namespace alert_service
         return tail_ptr;
     }
 
-    linked_list &linked_list::operator=(const linked_list &src)
+    size_t linked_list::length() const
     {
-        // Self-assignment guard: without it, list_clear would delete src's
-        // nodes before list_copy got a chance to read them.
-        if (this == &src)
-            return *this;
+        return many_nodes;
+    }
 
-        list_clear(head_ptr);
-        list_copy(src.head_ptr, head_ptr, tail_ptr);
-        return *this;
+    bool linked_list::empty() const
+    {
+        return head_ptr == NULL;
+    }
+
+    const node *linked_list::search(const node::value_type &target) const
+    {
+        for (const node *cursor = head_ptr; cursor != NULL; cursor = cursor->link())
+        {
+            ++nodes_visited;
+            ++comparisons;
+            if (target == cursor->data())
+                return cursor;
+        }
+
+        return NULL;
+    }
+
+    const node *linked_list::locate(size_t position) const
+    {
+        assert(0 < position);
+
+        const node *cursor = head_ptr;
+        for (size_t i = 1; (i < position) && (cursor != NULL); ++i)
+        {
+            ++nodes_visited;
+            cursor = cursor->link();
+        }
+
+        return cursor;
     }
 
     const node *linked_list::get_head() const
@@ -93,154 +219,20 @@ namespace alert_service
             << " deallocations=" << deallocations << std::endl;
     }
 
-    void linked_list::count_comparison()
+    void linked_list::copy_from(const node *source_ptr)
     {
-        ++comparisons;
-    }
-
-    void linked_list::count_node_visit()
-    {
-        ++nodes_visited;
-    }
-
-    void linked_list::count_allocation()
-    {
-        ++allocations;
-    }
-
-    void linked_list::count_deallocation()
-    {
-        ++deallocations;
-    }
-
-    size_t list_length(const node *head_ptr)
-    {
-        size_t answer = 0;
-
-        for (const node *cursor = head_ptr; cursor != NULL; cursor = cursor->link())
-        {
-            linked_list::count_node_visit();
-            ++answer;
-        }
-
-        return answer;
-    }
-
-    void list_head_insert(node *&head_ptr, const node::value_type &entry)
-    {
-        head_ptr = new node(entry, head_ptr);
-        linked_list::count_allocation();
-    }
-
-    void list_insert(node *previous_ptr, const node::value_type &entry)
-    {
-        assert(previous_ptr != NULL);
-
-        node *insert_ptr = new node(entry, previous_ptr->link());
-        linked_list::count_allocation();
-        previous_ptr->set_link(insert_ptr);
-    }
-
-    node *list_search(node *head_ptr, const node::value_type &target)
-    {
-        for (node *cursor = head_ptr; cursor != NULL; cursor = cursor->link())
-        {
-            linked_list::count_node_visit();
-            linked_list::count_comparison();
-            if (target == cursor->data())
-                return cursor;
-        }
-
-        return NULL;
-    }
-
-    const node *list_search(const node *head_ptr, const node::value_type &target)
-    {
-        for (const node *cursor = head_ptr; cursor != NULL; cursor = cursor->link())
-        {
-            linked_list::count_node_visit();
-            linked_list::count_comparison();
-            if (target == cursor->data())
-                return cursor;
-        }
-
-        return NULL;
-    }
-
-    node *list_locate(node *head_ptr, size_t position)
-    {
-        assert(0 < position);
-
-        node *cursor = head_ptr;
-        for (size_t i = 1; (i < position) && (cursor != NULL); ++i)
-        {
-            linked_list::count_node_visit();
-            cursor = cursor->link();
-        }
-
-        return cursor;
-    }
-
-    const node *list_locate(const node *head_ptr, size_t position)
-    {
-        assert(0 < position);
-
-        const node *cursor = head_ptr;
-        for (size_t i = 1; (i < position) && (cursor != NULL); ++i)
-        {
-            linked_list::count_node_visit();
-            cursor = cursor->link();
-        }
-
-        return cursor;
-    }
-
-    void list_head_remove(node *&head_ptr)
-    {
-        assert(head_ptr != NULL);
-
-        node *remove_ptr = head_ptr;
-        head_ptr = head_ptr->link();
-        delete remove_ptr;
-        linked_list::count_deallocation();
-    }
-
-    void list_remove(node *previous_ptr)
-    {
-        assert(previous_ptr != NULL);
-        assert(previous_ptr->link() != NULL);
-
-        node *remove_ptr = previous_ptr->link();
-        previous_ptr->set_link(remove_ptr->link());
-        delete remove_ptr;
-        linked_list::count_deallocation();
-    }
-
-    void list_clear(node *&head_ptr)
-    {
-        while (head_ptr != NULL)
-            list_head_remove(head_ptr);
-    }
-
-    void list_copy(const node *source_ptr, node *&head_ptr, node *&tail_ptr)
-    {
-        head_ptr = NULL;
-        tail_ptr = NULL;
-
         if (source_ptr == NULL)
             return;
 
         // The first node goes in with head_insert; every later node is appended
         // after tail_ptr, which keeps the copy in the same order as the source.
-        list_head_insert(head_ptr, source_ptr->data());
-        linked_list::count_node_visit();
-        tail_ptr = head_ptr;
+        head_insert(source_ptr->data());
+        ++nodes_visited;
 
         for (source_ptr = source_ptr->link(); source_ptr != NULL; source_ptr = source_ptr->link())
         {
-            linked_list::count_node_visit();
-            list_insert(tail_ptr, source_ptr->data());
-            tail_ptr = tail_ptr->link();
+            ++nodes_visited;
+            insert(tail_ptr, source_ptr->data());
         }
     }
 }
