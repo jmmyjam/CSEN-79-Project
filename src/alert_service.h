@@ -10,16 +10,21 @@
 namespace alert_service
 {
 
+
 struct Subscription
 {
     std::string user;
     std::string topic;
+
+    bool has_price_threshold = false;
+    double price_threshold = 0.0;
 
     bool operator==(const Subscription& other) const
     {
         return user == other.user && topic == other.topic;
     }
 };
+
 
 struct Alert
 {
@@ -40,21 +45,25 @@ class AlertService
 public:
     AlertService();
 
-    void subscribe(const std::string& user,
+ void subscribe(const std::string& user,
                    const std::string& topic);
+void subscribe(const std::string& user,
+               const std::string& topic,
+               bool has_price = false,
+               double threshold = 0.0);
 
-    void unsubscribe(const std::string& user,
-                     const std::string& topic);
+void unsubscribe(const std::string& user,
+                 const std::string& topic);
 
-    void publish(const std::string& topic,
-                 const std::string& message);
+void publish(const std::string& topic,
+             const std::string& message);
 
-    void print_inbox(const std::string& user) const;
+void set_price(const std::string& item, double new_price);
 
-    void print_history(const std::string& user) const;
-
-    void print_stats() const;
-
+void print_inbox(const std::string& user) const;
+void print_history(const std::string& user) const;
+void print_stats() const;
+    
 private:
     linked_list<Subscription> subscriptions;
     linked_list<Alert> alerts;
