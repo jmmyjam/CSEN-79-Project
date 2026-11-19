@@ -7,6 +7,8 @@ namespace alert_service
 {
 
 AlertService::AlertService()
+ : current_minute(0),
+   next_schedule_order(0)
 {
 }
 
@@ -38,7 +40,9 @@ void AlertService::subscribe(
     const std::string& user,
     const std::string& topic,
     bool has_price,
-    double threshold)
+    double threshold,
+    const std::string& schedule_type,
+    const std::string& schedule_value)
 {
     node<Subscription>* current = subscriptions.get_head();
 
@@ -50,6 +54,9 @@ void AlertService::subscribe(
         {
             existing.has_price_threshold = has_price;
             existing.price_threshold = threshold;
+            existing.schedule_type = schedule_type;
+            existing.schedule_value = schedule_value;
+            existing.next_delivery_minute = -1;
 
             current->set_data(existing);
 
@@ -66,6 +73,8 @@ void AlertService::subscribe(
     new_subscription.topic = topic;
     new_subscription.has_price_threshold = has_price;
     new_subscription.price_threshold = threshold;
+    new_subscription.schedule_type = schedule_type;
+    new_subscription.schedule_value = schedule_value;
 
     subscriptions.head_insert(new_subscription);
 
@@ -265,5 +274,31 @@ void AlertService::set_price(
     }
 }
 
+void AlertService::tick(int minutes)
+{
+    if (minutes < 0)
+    {
+        std::cout << "TICK cannot be negative.\n";
+        return;
+    }
+
+    current_minute += minutes;
+
+    long long day = current_minute / 1440 + 1;
+    long long hour = (current_minute % 1440) / 60;
+    long long minute = current_minute % 60;
+
+    std::cout << "Clock: Day " << day << " ";
+
+    if (hour < 10)
+        std::cout << "0";
+
+    std::cout << hour << ":";
+
+    if (minute < 10)
+        std::cout << "0";
+
+    std::cout << minute << '\n';
+}
 
 }

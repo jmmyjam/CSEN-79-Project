@@ -1,3 +1,4 @@
+
 #ifndef PARSER_H
 #define PARSER_H
 
@@ -20,12 +21,14 @@ namespace alert_service
 
     struct Command
     {
-        CommandType type;
+        CommandType type = CommandType::INVALID;
+
         std::string user;
         std::string topic;
         std::string message;
         std::string item;
         std::string time_option;
+
         double price = 0.0;
         int number = 0;
         bool has_price = false;
@@ -35,3 +38,4 @@ namespace alert_service
 }
 
 #endif
+      
