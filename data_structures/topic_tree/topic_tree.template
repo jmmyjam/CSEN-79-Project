@@ -1,0 +1,221 @@
+// FILE: topic_tree.template
+// IMPLEMENTS: the topic_tree<Item> template class (see topic_tree.h).
+// This file is included by topic_tree.h; do not compile it on its own.
+
+#include <cassert> // Provides assert
+
+namespace alert_service
+{
+    template <class Item>
+    size_t topic_tree<Item>::comparisons = 0;
+    template <class Item>
+    size_t topic_tree<Item>::nodes_visited = 0;
+    template <class Item>
+    size_t topic_tree<Item>::allocations = 0;
+    template <class Item>
+    size_t topic_tree<Item>::deallocations = 0;
+
+    template <class Item>
+    topic_tree<Item>::topic_tree()
+    {
+        // The root is a placeholder above the top-level topics, so that
+        // "news" and "horoscope" can both hang under one starting point.
+        root_ptr = new topic_node<Item>("");
+        ++allocations;
+        many_topics = 0;
+    }
+
+    template <class Item>
+    topic_tree<Item>::~topic_tree()
+    {
+        clear_subtree(root_ptr);
+        root_ptr = NULL;
+    }
+
+    template <class Item>
+    topic_node<Item> *topic_tree<Item>::find_or_create(const std::string &path)
+    {
+        topic_node<Item> *cursor = root_ptr;
+        topic_node<Item> *child;
+        std::string name;
+        size_t start = 0;
+        bool found_a_name = false;
+
+        while (next_name(path, start, name))
+        {
+            found_a_name = true;
+            child = find_child(cursor, name);
+
+            if (child == NULL)
+            { // This topic is missing, so add it as the parent's last child.
+                child = new topic_node<Item>(name);
+                ++allocations;
+                ++many_topics;
+
+                if (cursor->children().empty())
+                    cursor->children().head_insert(child);
+                else
+                    cursor->children().insert(cursor->children().get_tail(), child);
+            }
+
+            cursor = child;
+        }
+
+        assert(found_a_name);
+        return cursor;
+    }
+
+    template <class Item>
+    topic_node<Item> *topic_tree<Item>::find(const std::string &path)
+    {
+        topic_node<Item> *cursor = root_ptr;
+        std::string name;
+        size_t start = 0;
+        bool found_a_name = false;
+
+        while (next_name(path, start, name))
+        {
+            found_a_name = true;
+            cursor = find_child(cursor, name);
+
+            if (cursor == NULL)
+                return NULL;
+        }
+
+        if (!found_a_name)
+            return NULL;
+
+        return cursor;
+    }
+
+    template <class Item>
+    void topic_tree<Item>::path_nodes(const std::string &path, linked_list<topic_node<Item> *> &result)
+    {
+        topic_node<Item> *cursor = root_ptr;
+        std::string name;
+        size_t start = 0;
+
+        result.clear();
+
+        while (next_name(path, start, name))
+        {
+            cursor = find_child(cursor, name);
+
+            if (cursor == NULL)
+                return; // Nothing below a missing topic can have subscribers.
+
+            if (result.empty())
+                result.head_insert(cursor);
+            else
+                result.insert(result.get_tail(), cursor);
+        }
+    }
+
+    template <class Item>
+    size_t topic_tree<Item>::size() const
+    {
+        return many_topics;
+    }
+
+    template <class Item>
+    bool topic_tree<Item>::empty() const
+    {
+        return many_topics == 0;
+    }
+
+    template <class Item>
+    size_t topic_tree<Item>::get_comparisons()
+    {
+        return comparisons;
+    }
+
+    template <class Item>
+    size_t topic_tree<Item>::get_nodes_visited()
+    {
+        return nodes_visited;
+    }
+
+    template <class Item>
+    size_t topic_tree<Item>::get_allocations()
+    {
+        return allocations;
+    }
+
+    template <class Item>
+    size_t topic_tree<Item>::get_deallocations()
+    {
+        return deallocations;
+    }
+
+    template <class Item>
+    void topic_tree<Item>::reset_counters()
+    {
+        comparisons = 0;
+        nodes_visited = 0;
+        allocations = 0;
+        deallocations = 0;
+    }
+
+    template <class Item>
+    void topic_tree<Item>::print_counters(std::ostream &out)
+    {
+        out << "topic_tree comparisons=" << comparisons
+            << " nodes_visited=" << nodes_visited
+            << " allocations=" << allocations
+            << " deallocations=" << deallocations << std::endl;
+    }
+
+    template <class Item>
+    topic_node<Item> *topic_tree<Item>::find_child(topic_node<Item> *parent, const std::string &name)
+    {
+        assert(parent != NULL);
+
+        // children().search() would compare the pointers, not the names, so
+        // the list is walked here by hand.
+        for (node<topic_node<Item> *> *cursor = parent->children().get_head();
+             cursor != NULL; cursor = cursor->link())
+        {
+            ++nodes_visited;
+            ++comparisons;
+            if (cursor->data()->name() == name)
+                return cursor->data();
+        }
+
+        return NULL;
+    }
+
+    template <class Item>
+    void topic_tree<Item>::clear_subtree(topic_node<Item> *subtree_ptr)
+    {
+        assert(subtree_ptr != NULL);
+
+        for (node<topic_node<Item> *> *cursor = subtree_ptr->children().get_head();
+             cursor != NULL; cursor = cursor->link())
+            clear_subtree(cursor->data());
+
+        // Deleting the node also runs its linked_list destructors, which free
+        // the list nodes that held the child pointers and the subscribers.
+        delete subtree_ptr;
+        ++deallocations;
+    }
+
+    template <class Item>
+    bool topic_tree<Item>::next_name(const std::string &path, size_t &start, std::string &name)
+    {
+        assert(start <= path.length());
+
+        while (start < path.length() && path[start] == '/')
+            ++start;
+
+        if (start == path.length())
+            return false;
+
+        size_t end = path.find('/', start);
+        if (end == std::string::npos)
+            end = path.length();
+
+        name = path.substr(start, end - start);
+        start = end;
+        return true;
+    }
+}
