@@ -25,7 +25,11 @@ int main()
         switch (command.type)
         {
         case alert_service::CommandType::SUB:
-            service.subscribe(command.user, command.topic);
+           service.subscribe(
+           command.user,
+           command.topic,
+           command.has_price,
+           command.price);
             break;
 
         case alert_service::CommandType::UNSUB:
@@ -48,6 +52,9 @@ int main()
             service.print_stats();
             break;
 
+       case alert_service::CommandType::PRICE:
+           service.set_price(command.item, command.price);
+            break;
         default:
             std::cout << "Command not implemented yet.\n";
             break;

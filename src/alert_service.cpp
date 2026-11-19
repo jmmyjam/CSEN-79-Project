@@ -33,9 +33,12 @@ bool AlertService::topic_matches(
 // Add a subscription.
 // If the user already subscribed to the exact topic,
 // replace the existing subscription instead of adding a duplicate.
+
 void AlertService::subscribe(
     const std::string& user,
-    const std::string& topic)
+    const std::string& topic,
+    bool has_price,
+    double threshold)
 {
     node<Subscription>* current = subscriptions.get_head();
 
@@ -45,6 +48,11 @@ void AlertService::subscribe(
 
         if (existing.user == user && existing.topic == topic)
         {
+            existing.has_price_threshold = has_price;
+            existing.price_threshold = threshold;
+
+            current->set_data(existing);
+
             std::cout << user << " updated subscription to "
                       << topic << '\n';
             return;
@@ -56,12 +64,14 @@ void AlertService::subscribe(
     Subscription new_subscription;
     new_subscription.user = user;
     new_subscription.topic = topic;
+    new_subscription.has_price_threshold = has_price;
+    new_subscription.price_threshold = threshold;
 
     subscriptions.head_insert(new_subscription);
 
     std::cout << user << " subscribed to " << topic << '\n';
 }
-
+    
 // Remove only the exact user/topic subscription.
 void AlertService::unsubscribe(
     const std::string& user,
@@ -208,5 +218,52 @@ void AlertService::print_stats() const
     std::cout << "Alert count: "
               << alerts.length() << '\n';
 }
+
+
+void AlertService::set_price(
+    const std::string& item,
+    double new_price)
+{
+    std::string topic = "items/" + item;
+
+    node<Subscription>* current = subscriptions.get_head();
+    node<Subscription>* previous = NULL;
+
+    while (current != NULL)
+    {
+        Subscription subscription = current->data();
+
+        if (subscription.topic == topic &&
+            subscription.has_price_threshold &&
+            new_price < subscription.price_threshold)
+        {
+            Alert new_alert;
+            new_alert.user = subscription.user;
+            new_alert.topic = topic;
+            new_alert.message =
+                "Price dropped to $" + std::to_string(new_price);
+
+            alerts.head_insert(new_alert);
+
+            std::cout << "Price alert sent to "
+                      << subscription.user << '\n';
+
+            if (previous == NULL)
+                subscriptions.head_remove();
+            else
+                subscriptions.remove(previous);
+
+            current = (previous == NULL)
+                ? subscriptions.get_head()
+                : previous->link();
+        }
+        else
+        {
+            previous = current;
+            current = current->link();
+        }
+    }
+}
+
 
 }
