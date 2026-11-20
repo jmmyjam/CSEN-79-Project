@@ -12,7 +12,7 @@
 #define TOPIC_NODE_H
 
 #include <string> // Provides string
-#include "linked_list.h"
+#include "../linked_list/linked_list.h"
 
 namespace alert_service
 {

@@ -7,13 +7,7 @@
 namespace alert_service
 {
     template <class Item>
-    size_t topic_tree<Item>::comparisons = 0;
-    template <class Item>
-    size_t topic_tree<Item>::nodes_visited = 0;
-    template <class Item>
-    size_t topic_tree<Item>::allocations = 0;
-    template <class Item>
-    size_t topic_tree<Item>::deallocations = 0;
+    kit::Counters topic_tree<Item>::counters;
 
     template <class Item>
     topic_tree<Item>::topic_tree()
@@ -21,7 +15,7 @@ namespace alert_service
         // The root is a placeholder above the top-level topics, so that
         // "news" and "horoscope" can both hang under one starting point.
         root_ptr = new topic_node<Item>("");
-        ++allocations;
+        KIT_COUNT(counters, allocations);
         many_topics = 0;
     }
 
@@ -49,7 +43,7 @@ namespace alert_service
             if (child == NULL)
             { // This topic is missing, so add it as the parent's last child.
                 child = new topic_node<Item>(name);
-                ++allocations;
+                KIT_COUNT(counters, allocations);
                 ++many_topics;
 
                 if (cursor->children().empty())
@@ -124,45 +118,21 @@ namespace alert_service
     }
 
     template <class Item>
-    size_t topic_tree<Item>::get_comparisons()
+    const kit::Counters &topic_tree<Item>::get_counters()
     {
-        return comparisons;
-    }
-
-    template <class Item>
-    size_t topic_tree<Item>::get_nodes_visited()
-    {
-        return nodes_visited;
-    }
-
-    template <class Item>
-    size_t topic_tree<Item>::get_allocations()
-    {
-        return allocations;
-    }
-
-    template <class Item>
-    size_t topic_tree<Item>::get_deallocations()
-    {
-        return deallocations;
+        return counters;
     }
 
     template <class Item>
     void topic_tree<Item>::reset_counters()
     {
-        comparisons = 0;
-        nodes_visited = 0;
-        allocations = 0;
-        deallocations = 0;
+        counters.reset();
     }
 
     template <class Item>
     void topic_tree<Item>::print_counters(std::ostream &out)
     {
-        out << "topic_tree comparisons=" << comparisons
-            << " nodes_visited=" << nodes_visited
-            << " allocations=" << allocations
-            << " deallocations=" << deallocations << std::endl;
+        counters.print(out, "topic_tree");
     }
 
     template <class Item>
@@ -175,8 +145,8 @@ namespace alert_service
         for (node<topic_node<Item> *> *cursor = parent->children().get_head();
              cursor != NULL; cursor = cursor->link())
         {
-            ++nodes_visited;
-            ++comparisons;
+            KIT_COUNT(counters, visits);
+            KIT_COUNT(counters, comparisons);
             if (cursor->data()->name() == name)
                 return cursor->data();
         }
@@ -196,7 +166,7 @@ namespace alert_service
         // Deleting the node also runs its linked_list destructors, which free
         // the list nodes that held the child pointers and the subscribers.
         delete subtree_ptr;
-        ++deallocations;
+        KIT_COUNT_EXTRA(counters, "deallocations");
     }
 
     template <class Item>

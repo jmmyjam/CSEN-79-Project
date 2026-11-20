@@ -7,13 +7,7 @@
 namespace alert_service
 {
     template <class Item>
-    size_t linked_list<Item>::comparisons = 0;
-    template <class Item>
-    size_t linked_list<Item>::nodes_visited = 0;
-    template <class Item>
-    size_t linked_list<Item>::allocations = 0;
-    template <class Item>
-    size_t linked_list<Item>::deallocations = 0;
+    kit::Counters linked_list<Item>::counters;
 
     template <class Item>
     linked_list<Item>::linked_list()
@@ -55,7 +49,7 @@ namespace alert_service
     void linked_list<Item>::head_insert(const Item &entry)
     {
         head_ptr = new node<Item>(entry, head_ptr);
-        ++allocations;
+        KIT_COUNT(counters, allocations);
         ++many_nodes;
 
         if (tail_ptr == NULL)
@@ -68,7 +62,7 @@ namespace alert_service
         assert(previous_ptr != NULL);
 
         node<Item> *insert_ptr = new node<Item>(entry, previous_ptr->link());
-        ++allocations;
+        KIT_COUNT(counters, allocations);
         ++many_nodes;
         previous_ptr->set_link(insert_ptr);
 
@@ -84,7 +78,7 @@ namespace alert_service
         node<Item> *remove_ptr = head_ptr;
         head_ptr = head_ptr->link();
         delete remove_ptr;
-        ++deallocations;
+        KIT_COUNT_EXTRA(counters, "deallocations");
         --many_nodes;
 
         if (head_ptr == NULL)
@@ -104,7 +98,7 @@ namespace alert_service
             tail_ptr = previous_ptr;
 
         delete remove_ptr;
-        ++deallocations;
+        KIT_COUNT_EXTRA(counters, "deallocations");
         --many_nodes;
     }
 
@@ -120,8 +114,8 @@ namespace alert_service
     {
         for (node<Item> *cursor = head_ptr; cursor != NULL; cursor = cursor->link())
         {
-            ++nodes_visited;
-            ++comparisons;
+            KIT_COUNT(counters, visits);
+            KIT_COUNT(counters, comparisons);
             if (target == cursor->data())
                 return cursor;
         }
@@ -137,7 +131,7 @@ namespace alert_service
         node<Item> *cursor = head_ptr;
         for (size_t i = 1; (i < position) && (cursor != NULL); ++i)
         {
-            ++nodes_visited;
+            KIT_COUNT(counters, visits);
             cursor = cursor->link();
         }
 
@@ -173,8 +167,8 @@ namespace alert_service
     {
         for (const node<Item> *cursor = head_ptr; cursor != NULL; cursor = cursor->link())
         {
-            ++nodes_visited;
-            ++comparisons;
+            KIT_COUNT(counters, visits);
+            KIT_COUNT(counters, comparisons);
             if (target == cursor->data())
                 return cursor;
         }
@@ -190,7 +184,7 @@ namespace alert_service
         const node<Item> *cursor = head_ptr;
         for (size_t i = 1; (i < position) && (cursor != NULL); ++i)
         {
-            ++nodes_visited;
+            KIT_COUNT(counters, visits);
             cursor = cursor->link();
         }
 
@@ -210,45 +204,21 @@ namespace alert_service
     }
 
     template <class Item>
-    size_t linked_list<Item>::get_comparisons()
+    const kit::Counters &linked_list<Item>::get_counters()
     {
-        return comparisons;
-    }
-
-    template <class Item>
-    size_t linked_list<Item>::get_nodes_visited()
-    {
-        return nodes_visited;
-    }
-
-    template <class Item>
-    size_t linked_list<Item>::get_allocations()
-    {
-        return allocations;
-    }
-
-    template <class Item>
-    size_t linked_list<Item>::get_deallocations()
-    {
-        return deallocations;
+        return counters;
     }
 
     template <class Item>
     void linked_list<Item>::reset_counters()
     {
-        comparisons = 0;
-        nodes_visited = 0;
-        allocations = 0;
-        deallocations = 0;
+        counters.reset();
     }
 
     template <class Item>
     void linked_list<Item>::print_counters(std::ostream &out)
     {
-        out << "linked_list comparisons=" << comparisons
-            << " nodes_visited=" << nodes_visited
-            << " allocations=" << allocations
-            << " deallocations=" << deallocations << std::endl;
+        counters.print(out, "linked_list");
     }
 
     template <class Item>
@@ -260,11 +230,11 @@ namespace alert_service
         // The first node goes in with head_insert; every later node is appended
         // after tail_ptr, which keeps the copy in the same order as the source.
         head_insert(source_ptr->data());
-        ++nodes_visited;
+        KIT_COUNT(counters, visits);
 
         for (source_ptr = source_ptr->link(); source_ptr != NULL; source_ptr = source_ptr->link())
         {
-            ++nodes_visited;
+            KIT_COUNT(counters, visits);
             insert(tail_ptr, source_ptr->data());
         }
     }

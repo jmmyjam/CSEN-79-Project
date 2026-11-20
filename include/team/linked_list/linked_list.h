@@ -10,7 +10,7 @@
 //   2. tail_ptr points to the last node of the list, or is NULL if the list is empty.
 //   3. many_nodes is the number of nodes in the list.
 //   4. Every node in the list was allocated with new and is owned by this object.
-//   5. The counters hold the totals across every linked_list<Item> (for one
+//   5. counters holds the totals across every linked_list<Item> (for one
 //      Item type) since the program started or the last reset_counters().
 
 #ifndef LINKED_LIST_H
@@ -18,6 +18,7 @@
 
 #include <cstdlib>  // Provides size_t and NULL
 #include <iostream> // Provides ostream
+#include "kit/counters.h"
 #include "node.h"
 
 namespace alert_service
@@ -125,21 +126,13 @@ namespace alert_service
 
         // Counter functions
 
-        // static size_t get_comparisons()
-        //   Postcondition: Returns the number of item comparisons made.
-        static size_t get_comparisons();
-
-        // static size_t get_nodes_visited()
-        //   Postcondition: Returns the number of nodes a cursor has moved to.
-        static size_t get_nodes_visited();
-
-        // static size_t get_allocations()
-        //   Postcondition: Returns the number of nodes allocated with new.
-        static size_t get_allocations();
-
-        // static size_t get_deallocations()
-        //   Postcondition: Returns the number of nodes deleted.
-        static size_t get_deallocations();
+        // static const kit::Counters &get_counters()
+        //   Postcondition: Returns the counters (see kit/counters.h):
+        //                  comparisons  - items compared by search
+        //                  visits       - nodes a cursor has moved to
+        //                  allocations  - nodes allocated with new
+        //                  extra["deallocations"] - nodes deleted
+        static const kit::Counters &get_counters();
 
         // static void reset_counters()
         //   Postcondition: Every counter is 0. No list's nodes are changed.
@@ -155,13 +148,11 @@ namespace alert_service
         node<Item> *tail_ptr;
         size_t many_nodes;
 
-        // The counters are static: one shared set for every linked_list of the
-        // same Item type, so STATS gets the total across the app's many small
-        // lists. linked_list<int> and linked_list<double> count separately.
-        static size_t comparisons;
-        static size_t nodes_visited;
-        static size_t allocations;
-        static size_t deallocations;
+        // Static: one shared set for every linked_list of the same Item type,
+        // so STATS gets the total across the app's many small lists, and
+        // const functions like search() can still update it.
+        // linked_list<int> and linked_list<double> count separately.
+        static kit::Counters counters;
 
         // void copy_from(const node<Item> *source_ptr)
         //   Precondition:  This list is empty.

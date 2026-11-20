@@ -12,7 +12,7 @@
 //      item, and every item in its right subtree is greater.
 //   2. many_nodes is the number of nodes in the tree.
 //   3. Every node was allocated with new and is owned by this object.
-//   4. The counters hold the totals across every bst<Item> (for one Item
+//   4. counters holds the totals across every bst<Item> (for one Item
 //      type) since the program started or the last reset_counters().
 
 #ifndef BST_H
@@ -20,6 +20,7 @@
 
 #include <cstdlib>  // Provides size_t and NULL
 #include <iostream> // Provides ostream
+#include "kit/counters.h"
 #include "binary_tree_node.h"
 
 namespace alert_service
@@ -94,21 +95,15 @@ namespace alert_service
 
         // Counter functions
 
-        // static size_t get_comparisons()
-        //   Postcondition: Returns the number of item comparisons made.
-        static size_t get_comparisons();
-
-        // static size_t get_nodes_visited()
-        //   Postcondition: Returns the number of nodes visited while searching.
-        static size_t get_nodes_visited();
-
-        // static size_t get_allocations()
-        //   Postcondition: Returns the number of nodes allocated with new.
-        static size_t get_allocations();
-
-        // static size_t get_deallocations()
-        //   Postcondition: Returns the number of nodes deleted.
-        static size_t get_deallocations();
+        // static const kit::Counters &get_counters()
+        //   Postcondition: Returns the counters (see kit/counters.h):
+        //                  comparisons  - items compared (< and > count once each)
+        //                  visits       - nodes visited while searching
+        //                  allocations  - nodes allocated with new
+        //                  moves        - items copied up into another node
+        //                                 when removing a node with two children
+        //                  extra["deallocations"] - nodes deleted
+        static const kit::Counters &get_counters();
 
         // static void reset_counters()
         //   Postcondition: Every counter is 0. No tree's items are changed.
@@ -123,13 +118,10 @@ namespace alert_service
         binary_tree_node<Item> *root_ptr;
         size_t many_nodes;
 
-        // The counters are static: one shared set for every bst of the same
-        // Item type, so STATS gets the total across the app's one-tree-per-item.
-        // Being static also lets const functions like contains() update them.
-        static size_t comparisons;
-        static size_t nodes_visited;
-        static size_t allocations;
-        static size_t deallocations;
+        // Static: one shared set for every bst of the same Item type, so
+        // STATS gets the total across the app's one-tree-per-item. Being
+        // static also lets const functions like contains() update it.
+        static kit::Counters counters;
 
         // Recursive helpers
 

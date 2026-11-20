@@ -7,13 +7,7 @@
 namespace alert_service
 {
     template <class Item>
-    size_t bst<Item>::comparisons = 0;
-    template <class Item>
-    size_t bst<Item>::nodes_visited = 0;
-    template <class Item>
-    size_t bst<Item>::allocations = 0;
-    template <class Item>
-    size_t bst<Item>::deallocations = 0;
+    kit::Counters bst<Item>::counters;
 
     template <class Item>
     bst<Item>::bst()
@@ -45,22 +39,22 @@ namespace alert_service
         if (root_ptr == NULL)
         {
             root_ptr = new binary_tree_node<Item>(entry);
-            ++allocations;
+            KIT_COUNT(counters, allocations);
             ++many_nodes;
             return;
         }
 
         do
         {
-            ++nodes_visited;
-            ++comparisons;
+            KIT_COUNT(counters, visits);
+            KIT_COUNT(counters, comparisons);
             if (entry < cursor->data())
             { // Go left
 
                 if (cursor->left() == NULL)
                 {
                     cursor->set_left(new binary_tree_node<Item>(entry));
-                    ++allocations;
+                    KIT_COUNT(counters, allocations);
                     ++many_nodes;
                     done = true;
                 }
@@ -69,14 +63,14 @@ namespace alert_service
             }
             else
             {
-                ++comparisons;
+                KIT_COUNT(counters, comparisons);
                 if (entry > cursor->data())
                 { // Go right
 
                     if (cursor->right() == NULL)
                     {
                         cursor->set_right(new binary_tree_node<Item>(entry));
-                        ++allocations;
+                        KIT_COUNT(counters, allocations);
                         ++many_nodes;
                         done = true;
                     }
@@ -132,11 +126,11 @@ namespace alert_service
         assert(!empty());
 
         const binary_tree_node<Item> *cursor = root_ptr;
-        ++nodes_visited;
+        KIT_COUNT(counters, visits);
         while (cursor->right() != NULL)
         {
             cursor = cursor->right();
-            ++nodes_visited;
+            KIT_COUNT(counters, visits);
         }
         return cursor->data();
     }
@@ -148,14 +142,14 @@ namespace alert_service
 
         while (cursor != NULL)
         {
-            ++nodes_visited;
+            KIT_COUNT(counters, visits);
 
-            ++comparisons;
+            KIT_COUNT(counters, comparisons);
             if (target < cursor->data())
                 cursor = cursor->left();
             else
             {
-                ++comparisons;
+                KIT_COUNT(counters, comparisons);
                 if (target > cursor->data())
                     cursor = cursor->right();
                 else
@@ -178,45 +172,21 @@ namespace alert_service
     }
 
     template <class Item>
-    size_t bst<Item>::get_comparisons()
+    const kit::Counters &bst<Item>::get_counters()
     {
-        return comparisons;
-    }
-
-    template <class Item>
-    size_t bst<Item>::get_nodes_visited()
-    {
-        return nodes_visited;
-    }
-
-    template <class Item>
-    size_t bst<Item>::get_allocations()
-    {
-        return allocations;
-    }
-
-    template <class Item>
-    size_t bst<Item>::get_deallocations()
-    {
-        return deallocations;
+        return counters;
     }
 
     template <class Item>
     void bst<Item>::reset_counters()
     {
-        comparisons = 0;
-        nodes_visited = 0;
-        allocations = 0;
-        deallocations = 0;
+        counters.reset();
     }
 
     template <class Item>
     void bst<Item>::print_counters(std::ostream &out)
     {
-        out << "bst comparisons=" << comparisons
-            << " nodes_visited=" << nodes_visited
-            << " allocations=" << allocations
-            << " deallocations=" << deallocations << std::endl;
+        counters.print(out, "bst");
     }
 
     template <class Item>
@@ -229,15 +199,15 @@ namespace alert_service
             return false;
         }
 
-        ++nodes_visited;
+        KIT_COUNT(counters, visits);
 
-        ++comparisons;
+        KIT_COUNT(counters, comparisons);
         if (target < subtree_ptr->data())
         { // Continue looking in the left subtree
             return remove_at(subtree_ptr->left(), target);
         }
 
-        ++comparisons;
+        KIT_COUNT(counters, comparisons);
         if (target > subtree_ptr->data())
         { // Continue looking in the right subtree
             return remove_at(subtree_ptr->right(), target);
@@ -251,13 +221,14 @@ namespace alert_service
             oldroot_ptr = subtree_ptr;
             subtree_ptr = subtree_ptr->right();
             delete oldroot_ptr;
-            ++deallocations;
+            KIT_COUNT_EXTRA(counters, "deallocations");
             return true;
         }
 
         // If code reaches this point, then we must remove the target from
         // the current node. We'll actually replace this target with the
         // maximum item of left subtree.
+        KIT_COUNT(counters, moves);
         remove_max_at(subtree_ptr->left(), subtree_ptr->data());
         return true;
     }
@@ -268,7 +239,7 @@ namespace alert_service
         binary_tree_node<Item> *oldroot_ptr;
 
         assert(subtree_ptr != NULL);
-        ++nodes_visited;
+        KIT_COUNT(counters, visits);
 
         if (subtree_ptr->right() == NULL)
         { // This node is the max. Its left child (or NULL) takes its place.
@@ -276,7 +247,7 @@ namespace alert_service
             oldroot_ptr = subtree_ptr;
             subtree_ptr = subtree_ptr->left();
             delete oldroot_ptr;
-            ++deallocations;
+            KIT_COUNT_EXTRA(counters, "deallocations");
         }
         else
             remove_max_at(subtree_ptr->right(), removed);
@@ -308,7 +279,7 @@ namespace alert_service
 
         l_ptr = copy_tree(source_ptr->left());
         r_ptr = copy_tree(source_ptr->right());
-        ++allocations;
+        KIT_COUNT(counters, allocations);
         return new binary_tree_node<Item>(source_ptr->data(), l_ptr, r_ptr);
     }
 
@@ -321,7 +292,7 @@ namespace alert_service
         clear_tree(subtree_ptr->left());
         clear_tree(subtree_ptr->right());
         delete subtree_ptr;
-        ++deallocations;
+        KIT_COUNT_EXTRA(counters, "deallocations");
         subtree_ptr = NULL;
     }
 }

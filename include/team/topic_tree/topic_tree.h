@@ -15,7 +15,7 @@
 //   2. No node has two children with the same name.
 //   3. many_topics is the number of nodes in the tree, not counting the root.
 //   4. Every node was allocated with new and is owned by this object.
-//   5. The counters hold the totals across every topic_tree<Item> (for one
+//   5. counters holds the totals across every topic_tree<Item> (for one
 //      Item type) since the program started or the last reset_counters().
 
 #ifndef TOPIC_TREE_H
@@ -24,7 +24,8 @@
 #include <cstdlib>  // Provides size_t and NULL
 #include <iostream> // Provides ostream
 #include <string>   // Provides string
-#include "linked_list.h"
+#include "kit/counters.h"
+#include "../linked_list/linked_list.h"
 #include "topic_node.h"
 
 namespace alert_service
@@ -79,23 +80,15 @@ namespace alert_service
 
         // Counter functions
 
-        // static size_t get_comparisons()
-        //   Postcondition: Returns the number of topic name comparisons made.
-        static size_t get_comparisons();
-
-        // static size_t get_nodes_visited()
-        //   Postcondition: Returns the number of child topics examined while
-        //                  searching for a name.
-        static size_t get_nodes_visited();
-
-        // static size_t get_allocations()
-        //   Postcondition: Returns the number of topic nodes allocated with
-        //                  new, including each tree's root.
-        static size_t get_allocations();
-
-        // static size_t get_deallocations()
-        //   Postcondition: Returns the number of topic nodes deleted.
-        static size_t get_deallocations();
+        // static const kit::Counters &get_counters()
+        //   Postcondition: Returns the counters (see kit/counters.h):
+        //                  comparisons  - topic names compared
+        //                  visits       - child topics examined while
+        //                                 searching for a name
+        //                  allocations  - topic nodes allocated with new,
+        //                                 including each tree's root
+        //                  extra["deallocations"] - topic nodes deleted
+        static const kit::Counters &get_counters();
 
         // static void reset_counters()
         //   Postcondition: Every counter is 0. No tree's topics are changed.
@@ -110,13 +103,10 @@ namespace alert_service
         topic_node<Item> *root_ptr;
         size_t many_topics;
 
-        // The counters are static: one shared set for every topic_tree of the
-        // same Item type. They count only the tree's own work; the linked
-        // lists inside each node keep their own counters (see linked_list.h).
-        static size_t comparisons;
-        static size_t nodes_visited;
-        static size_t allocations;
-        static size_t deallocations;
+        // Static: one shared set for every topic_tree of the same Item type.
+        // It counts only the tree's own work; the linked lists inside each
+        // node keep their own counters (see linked_list.h).
+        static kit::Counters counters;
 
         // Declared but never defined, so copying a topic_tree will not
         // compile. A copy would share every node with the original, and both
