@@ -50,3 +50,4 @@ add_executable(gen_alerts tools/gen_alerts.cpp)
 
 enable_testing()
 add_test(NAME unit_tests COMMAND tests)
+add_executable(bench bench/bench.cpp)
