@@ -3,8 +3,8 @@
 #include <iostream>
 #include <string>
 
-#include "parser.h"
-#include "alert_service.h"
+#include "../include/team/parser.h"
+#include "../include/team/app.h"
 
 int main()
 {
@@ -71,4 +71,3 @@ int main()
 
     return 0;
 }
-

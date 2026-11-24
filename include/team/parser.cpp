@@ -5,13 +5,21 @@
 
 namespace alert_service
 {
-    Command parse_command(const std::string& line)
+    // Used to reject trailing words, such as the "at 08:00" in
+    // "SUB carol horoscope/leo below 10 at 08:00".
+    inline bool no_more_words(std::istringstream &input)
+    {
+        std::string extra;
+        return !(input >> extra);
+    }
+
+    Command parse_command(const std::string &line)
     {
         Command command;
         command.type = CommandType::INVALID;
 
         std::istringstream input(line);
-        std::string operation;
+        std::string operation, value;
 
         if (!(input >> operation))
             return command;
@@ -23,38 +31,39 @@ namespace alert_service
             if (!(input >> command.user >> command.topic))
                 return Command{};
 
-            std::string option;
-
-            while (input >> option)
+            if (input >> command.option)
             {
-                if (option == "below")
-                {
-                    if (!(input >> command.price))
-                        return Command{};
+                if (!(input >> value) || !no_more_words(input))
+                    return Command{};
 
-                    command.has_price = true;
+                if (command.option == "below")
+                {
+                    if (!parse_cents(value, command.price_cents))
+                        return Command{};
                 }
-                else if (option == "at" || option == "every")
+                else if (command.option == "at")
                 {
-                    if (!command.time_option.empty())
+                    if (!parse_clock(value, command.at_minute))
                         return Command{};
-
-                    command.time_option = option;
-
-                    if (!(input >> command.message))
+                }
+                else if (command.option == "every")
+                {
+                    if (!parse_whole(value, command.every_hours) || command.every_hours == 0)
                         return Command{};
                 }
                 else
                 {
                     return Command{};
                 }
+
+                command.typed = command.option + " " + value;
             }
         }
         else if (operation == "UNSUB")
         {
             command.type = CommandType::UNSUB;
 
-            if (!(input >> command.user >> command.topic))
+            if (!(input >> command.user >> command.topic) || !no_more_words(input))
                 return Command{};
         }
         else if (operation == "PUB")
@@ -68,43 +77,53 @@ namespace alert_service
 
             if (!command.message.empty() && command.message[0] == ' ')
                 command.message.erase(0, 1);
+
+            if (command.message.empty())
+                return Command{};
         }
         else if (operation == "PRICE")
         {
             command.type = CommandType::PRICE;
 
-            if (!(input >> command.item >> command.price))
+            if (!(input >> command.topic >> value) || !no_more_words(input) ||
+                !parse_cents(value, command.price_cents))
                 return Command{};
         }
         else if (operation == "TICK")
         {
             command.type = CommandType::TICK;
 
-            if (!(input >> command.number) || command.number < 0)
+            if (!(input >> value) || !no_more_words(input) ||
+                !parse_whole(value, command.tick_minutes))
                 return Command{};
         }
         else if (operation == "INBOX" || operation == "HISTORY")
         {
             command.type = (operation == "INBOX")
-                ? CommandType::INBOX : CommandType::HISTORY;
+                               ? CommandType::INBOX
+                               : CommandType::HISTORY;
 
             if (!(input >> command.user))
                 return Command{};
 
-            if (input >> command.number)
+            if (input >> value)
             {
-                if (command.number < 0)
+                if (!no_more_words(input) || !parse_whole(value, command.count))
                     return Command{};
-            }
-            else
-            {
-                command.number = 0;
-                input.clear();
+
+                command.has_count = true;
             }
         }
         else if (operation == "STATS")
         {
             command.type = CommandType::STATS;
+
+            if (!no_more_words(input))
+                return Command{};
+        }
+        else
+        {
+            command.type = CommandType::UNKNOWN;
         }
 
         return command;
