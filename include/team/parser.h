@@ -24,11 +24,16 @@ namespace alert_service
     {
         CommandType type = CommandType::INVALID;
 
+        // the user
         std::string user;
+        // the topic like news/soccer or item/phones/iphone
         std::string topic;
+        // for publish to publish news
         std::string message;
 
+        // set flags like below price or at certain time
         std::string option;
+        // how the user typed the option with its word and value like at 08:00 to display for history
         std::string typed;
 
         long long price_cents = 0;
@@ -38,6 +43,13 @@ namespace alert_service
         long long count = 0;
         bool has_count = false;
     };
+
+    // Command parse_command(const std::string &line)
+    //   Precondition:  line is not blank and does not start with '#'.
+    //   Postcondition: Returns the command on line. Its type is UNKNOWN if
+    //                  the first word is not a command, or INVALID if the
+    //                  arguments are missing or wrong.
+    Command parse_command(const std::string &line);
 
     // Ensure that an input only consists of digits and not something like 12asdas
     inline bool parse_whole(const std::string &text, long long &value)
