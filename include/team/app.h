@@ -22,7 +22,7 @@ namespace alert_service
         bool has_price_threshold = false;
         double price_threshold = 0.0;
 
-        // Schedule: "", "at", or "every"
+        // Schedule: "", "at", "below", or "every"
         std::string schedule_type;
         std::string schedule_value;
 
