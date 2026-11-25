@@ -124,6 +124,13 @@ namespace alert_service
         //   Postcondition: Returns a read-only pointer to the last node, or NULL.
         const node<Item> *get_tail() const;
 
+        // bool check_invariants() const
+        //   Postcondition: Returns true if invariants 1 to 3 hold: following
+        //                  the links from head_ptr reaches exactly many_nodes
+        //                  nodes and ends at tail_ptr. The counters are not
+        //                  changed. Used by the tests.
+        bool check_invariants() const;
+
         // Counter functions
 
         // static const kit::Counters &get_counters()

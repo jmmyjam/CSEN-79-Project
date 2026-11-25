@@ -172,6 +172,62 @@ namespace alert_service
     }
 
     template <class Item>
+    void bst<Item>::range(const Item &low, const Item &high, linked_list<Item> &result) const
+    {
+        // Nodes waiting to be listed once their left side is done. A stack
+        // instead of recursion, so a lopsided tree cannot overflow the
+        // call stack (see clear_tree).
+        linked_list<const binary_tree_node<Item> *> waiting;
+        const binary_tree_node<Item> *cursor = root_ptr;
+
+        result.clear();
+
+        while (cursor != NULL || !waiting.empty())
+        {
+            // Go down to the smallest item that is at least low.
+            while (cursor != NULL)
+            {
+                KIT_COUNT(counters, visits);
+                KIT_COUNT(counters, comparisons);
+                if (cursor->data() < low)
+                    cursor = cursor->right(); // its left subtree is all too small
+                else
+                {
+                    waiting.head_insert(cursor);
+                    cursor = cursor->left();
+                }
+            }
+
+            if (waiting.empty())
+             break;
+
+            cursor = waiting.get_head()->data();
+            waiting.head_remove();
+
+            KIT_COUNT(counters, comparisons);
+            if (!(cursor->data() < high))
+             break; // items come out smallest first, so the rest are too big
+
+            if (result.empty())
+                result.head_insert(cursor->data());
+            else
+                result.insert(result.get_tail(), cursor->data());
+
+            cursor = cursor->right();
+        }
+    }
+
+    template <class Item>
+    bool bst<Item>::check_invariants() const
+    {
+        const Item *previous_ptr = NULL;
+        size_t count = 0;
+
+        return check_subtree(root_ptr, previous_ptr, count) && count == many_nodes;
+    }
+
+
+    template <class Item>
     const kit::Counters &bst<Item>::get_counters()
     {
         return counters;
@@ -286,13 +342,51 @@ namespace alert_service
     template <class Item>
     void bst<Item>::clear_tree(binary_tree_node<Item> *&subtree_ptr)
     {
-        if (subtree_ptr == NULL)
-            return;
+        binary_tree_node<Item> *child_ptr;
 
-        clear_tree(subtree_ptr->left());
-        clear_tree(subtree_ptr->right());
-        delete subtree_ptr;
-        KIT_COUNT_EXTRA(counters, "deallocations");
-        subtree_ptr = NULL;
+        // Not recursive: sorted input makes the tree one long chain, and one
+        // call per level overflowed the stack at 100,000 nodes under ASan.
+        // Turning each left child into its parent's parent leaves a chain
+        // that only goes right, which is deleted from the top down.
+        while (subtree_ptr != NULL)
+        {
+            if (subtree_ptr->left() != NULL)
+            {
+                child_ptr = subtree_ptr->left();
+                subtree_ptr->set_left(child_ptr->right());
+                child_ptr->set_right(subtree_ptr);
+                subtree_ptr = child_ptr;
+            }
+            else
+            {
+                child_ptr = subtree_ptr->right();
+                delete subtree_ptr;
+                KIT_COUNT_EXTRA(counters, "deallocations");
+                subtree_ptr = child_ptr;
+            }
+        }
     }
+
+    template <class Item>
+    bool bst<Item>::check_subtree(const binary_tree_node<Item> *subtree_ptr,
+                               const Item *&previous_ptr, size_t &count) const
+    {
+        if (subtree_ptr == NULL)
+            return true;
+
+        if (!check_subtree(subtree_ptr->left(), previous_ptr, count))
+            return false;
+
+        // Taken in order, a search tree's items must keep getting bigger.
+        // Comparing each one only with the item before it is enough to
+        // catch a node on the wrong side of any ancestor.
+        if (previous_ptr != NULL && !(*previous_ptr < subtree_ptr->data()))
+         return false;
+
+        previous_ptr = &subtree_ptr->data();
+        ++count;
+
+        return check_subtree(subtree_ptr->right(), previous_ptr, count);
+    }
+
 }

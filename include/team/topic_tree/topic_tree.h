@@ -78,6 +78,21 @@ namespace alert_service
         //   Postcondition: Returns true if the tree has no topics.
         bool empty() const;
 
+        // bool check_invariants() const
+        //   Postcondition: Returns true if invariants 1 to 3 hold, and every
+        //                  topic's child and subscriber lists pass their own
+        //                  check_invariants(). The counters are not changed.
+        //                  Used by the tests.
+        bool check_invariants() const;
+
+        // static bool next_name(const std::string &path, size_t &start, std::string &name)
+        //   Precondition:  start <= path.length().
+        //   Postcondition: If path has another topic name at or after start,
+        //                  it has been copied into name, start has moved past
+        //                  it, and true is returned. Otherwise returns false.
+        //                  Public so stl_topic_tree splits paths the same way.
+        static bool next_name(const std::string &path, size_t &start, std::string &name);
+
         // Counter functions
 
         // static const kit::Counters &get_counters()
@@ -128,12 +143,13 @@ namespace alert_service
         //                  been deleted.
         void clear_subtree(topic_node<Item> *subtree_ptr);
 
-        // static bool next_name(const std::string &path, size_t &start, std::string &name)
-        //   Precondition:  start <= path.length().
-        //   Postcondition: If path has another topic name at or after start,
-        //                  it has been copied into name, start has moved past
-        //                  it, and true is returned. Otherwise returns false.
-        static bool next_name(const std::string &path, size_t &start, std::string &name);
+        // bool check_subtree(const topic_node<Item> *subtree_ptr, size_t &count) const
+        //   Precondition:  subtree_ptr is not NULL.
+        //   Postcondition: Returns true if every topic below subtree_ptr has a
+        //                  valid name, no two children of one topic share a
+        //                  name, and every list is valid. count has gone up by
+        //                  the number of topics below subtree_ptr.
+        bool check_subtree(const topic_node<Item> *subtree_ptr, size_t &count) const;
     };
 }
 

@@ -22,6 +22,7 @@
 #include <iostream> // Provides ostream
 #include "kit/counters.h"
 #include "binary_tree_node.h"
+#include "../linked_list/linked_list.h"
 
 namespace alert_service
 {
@@ -93,6 +94,21 @@ namespace alert_service
         //                  because no node stores its height.
         size_t height() const;
 
+        // void range(const Item &low, const Item &high, linked_list<Item> &result) const
+        //   Postcondition: result's old contents have been removed, and it now
+        //                  holds every item that is at least low and less than
+        //                  high, smallest first. Only the nodes on the way to
+        //                  those items are visited, not the whole tree.
+        //                  Used by PRICE.
+        void range(const Item &low, const Item &high, linked_list<Item> &result) const;
+
+        // bool check_invariants() const
+        //   Postcondition: Returns true if invariants 1 and 2 hold: the items
+        //                  are in search-tree order and many_nodes is the
+        //                  number of nodes. The counters are not changed.
+        //                  Used by the tests.
+        bool check_invariants() const;
+
         // Counter functions
 
         // static const kit::Counters &get_counters()
@@ -153,6 +169,16 @@ namespace alert_service
         //   Postcondition: Every node in the subtree has been deleted and
         //                  subtree_ptr is NULL.
         void clear_tree(binary_tree_node<Item> *&subtree_ptr);
+
+        // bool check_subtree(const binary_tree_node<Item> *subtree_ptr,
+        //                    const Item *&previous_ptr, size_t &count) const
+        //   Postcondition: Returns true if the subtree's items, taken in
+        //                  order, are each greater than the one before,
+        //                  starting from *previous_ptr (if it is not NULL).
+        //                  count has gone up by the subtree's size, and
+        //                  previous_ptr points to the last item checked.
+        bool check_subtree(const binary_tree_node<Item> *subtree_ptr,
+                           const Item *&previous_ptr, size_t &count) const;
     };
 }
 

@@ -117,6 +117,19 @@ namespace alert_service
         return many_topics == 0;
     }
 
+     template <class Item>
+    bool topic_tree<Item>::check_invariants() const
+    {
+        size_t count = 0;
+
+        // Invariant 1: the root is an unnamed placeholder, not a topic.
+        if (root_ptr == NULL || !root_ptr->name().empty())
+            return false;
+
+        return check_subtree(root_ptr, count) && count == many_topics;
+    }
+
+
     template <class Item>
     const kit::Counters &topic_tree<Item>::get_counters()
     {
@@ -168,6 +181,42 @@ namespace alert_service
         delete subtree_ptr;
         KIT_COUNT_EXTRA(counters, "deallocations");
     }
+
+     template <class Item>
+    bool topic_tree<Item>::check_subtree(const topic_node<Item> *subtree_ptr, size_t &count) const
+    {
+        assert(subtree_ptr != NULL);
+
+        const linked_list<topic_node<Item> *> &children = subtree_ptr->children();
+
+        if (!children.check_invariants() || !subtree_ptr->subscribers().check_invariants())
+            return false;
+
+        for (const node<topic_node<Item> *> *cursor = children.get_head();
+          cursor != NULL; cursor = cursor->link())
+        {
+            const topic_node<Item> *child_ptr = cursor->data();
+
+            // next_name splits paths on '/' and skips empty names, so a topic
+            // named "" or "a/b" could never be found by any path.
+            if (child_ptr == NULL || child_ptr->name().empty() ||
+                child_ptr->name().find('/') != std::string::npos)
+                return false;
+
+            // Invariant 2: no later sibling has the same name.
+            for (const node<topic_node<Item> *> *other = cursor->link();
+                other != NULL; other = other->link())
+                if (other->data()->name() == child_ptr->name())
+                    return false;
+
+            ++count;
+            if (!check_subtree(child_ptr, count))
+                return false;
+        }
+
+        return true;
+    }
+
 
     template <class Item>
     bool topic_tree<Item>::next_name(const std::string &path, size_t &start, std::string &name)

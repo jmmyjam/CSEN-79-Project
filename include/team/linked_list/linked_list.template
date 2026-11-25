@@ -204,6 +204,26 @@ namespace alert_service
     }
 
     template <class Item>
+    bool linked_list<Item>::check_invariants() const
+    {
+        const node<Item> *last_ptr = NULL;
+        size_t count = 0;
+
+        for (const node<Item> *cursor = head_ptr; cursor != NULL; cursor = cursor->link())
+        {
+            ++count;
+            // A bad link that points back into the list would make this walk
+            // go around forever, so stop once there are more nodes than
+            // there should be.
+            if (count > many_nodes)
+                return false;
+            last_ptr = cursor;
+        }
+
+        return count == many_nodes && last_ptr == tail_ptr;
+    }
+
+    template <class Item>
     const kit::Counters &linked_list<Item>::get_counters()
     {
         return counters;
