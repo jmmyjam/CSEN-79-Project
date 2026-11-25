@@ -13,6 +13,7 @@ int main(int argc, char *argv[])
 {
     bool quiet = false;
     bool use_alt = false;
+    bool use_alt_topics = false;
     long long inbox_size = 10;
     std::string file_name;
 
@@ -27,6 +28,11 @@ int main(int argc, char *argv[])
             use_alt = false;
         else if (arg == "--impl=alt")
             use_alt = true;
+        else if (arg == "--topics=main")
+            use_alt_topics = false;
+        else if (arg == "--topics=alt")
+            use_alt_topics = true;
+
         else if (arg == "--inbox" && i + 1 < argc &&
                  parse_whole(argv[i + 1], inbox_size) && inbox_size > 0)
             ++i; // skip K so it isn't taken as a file name
@@ -34,13 +40,13 @@ int main(int argc, char *argv[])
             file_name = arg;
         else
         {
-            std::cerr << "usage: ./app [--quiet] [--inbox K] [--impl=main|alt] [file]\n";
+            std::cerr << "usage: ./app [--quiet] [--inbox K] [--impl=main|alt] [--topics=main|alt] [file]\n";
             return 1;
         }
     }
 
     // start the alert service
-    AlertService service(quiet, use_alt, inbox_size);
+    AlertService service(quiet, use_alt, use_alt_topics, inbox_size);
 
     if (file_name.empty())
         run_commands(std::cin, service, quiet);
