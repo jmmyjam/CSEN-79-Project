@@ -6,6 +6,10 @@
 #include <cstddef>
 
 #include "linked_list/linked_list.h"
+#include "bst/bst.h"
+#include "topic_tree/topic_tree.h"
+#include "stl_bst.h"
+#include "stl_topic_tree.h"
 
 namespace alert_service
 {
@@ -90,6 +94,8 @@ namespace alert_service
 
     private:
         bool use_alt;
+        topic_tree<Subscription *> topics;
+        stl_topic_tree<Subscription *> alt_topics;
 
         linked_list<Subscription> subscriptions;
         linked_list<Alert> alerts;
