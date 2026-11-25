@@ -7,6 +7,8 @@
 
 using namespace alert_service;
 
+void run_commands(std::istream &in, AlertService &service, bool quiet);
+
 int main(int argc, char *argv[])
 {
     bool quiet = false;
@@ -98,7 +100,7 @@ void run_commands(std::istream &in, AlertService &service, bool quiet)
             break;
 
         case CommandType::TICK:
-            service.tick(command.tick_miuntes);
+            service.tick(command.tick_minutes);
             break;
 
         case CommandType::INBOX:
