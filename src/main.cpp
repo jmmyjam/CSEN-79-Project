@@ -86,11 +86,10 @@ void run_commands(std::istream &in, AlertService &service, bool quiet)
             service.subscribe(
                 command.user,
                 command.topic,
+                command.option == "below",
+                command.price_cents / 100.0,
                 command.option,
-                command.typed,
-                command.price_cents,
-                command.at_minute,
-                command.every_hours);
+                command.typed);
             break;
 
         case CommandType::UNSUB:
@@ -102,7 +101,7 @@ void run_commands(std::istream &in, AlertService &service, bool quiet)
             break;
 
         case CommandType::PRICE:
-            service.set_price(command.topic, command.price_cents);
+            service.set_price(command.topic, command.price_cents / 100.0);
             break;
 
         case CommandType::TICK:
@@ -110,11 +109,11 @@ void run_commands(std::istream &in, AlertService &service, bool quiet)
             break;
 
         case CommandType::INBOX:
-            service.print_inbox(command.user, command.has_count, command.count);
+            service.print_inbox(command.user);
             break;
 
         case CommandType::HISTORY:
-            service.print_history(command.user, command.has_count, command.count);
+            service.print_history(command.user);
             break;
 
         case CommandType::STATS:

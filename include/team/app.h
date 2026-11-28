@@ -38,6 +38,7 @@ namespace alert_service
 
     struct Alert
     {
+        long long minute = 0;
         std::string user;
         std::string topic;
         std::string message;

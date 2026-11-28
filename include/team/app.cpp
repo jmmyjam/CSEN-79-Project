@@ -1,4 +1,7 @@
 #include "parser.h"
+#include <map>
+#include <vector>
+#include <algorithm>
 
 #include "app.h"
 
@@ -100,30 +103,61 @@ namespace alert_service
         const std::string &user,
         const std::string &topic)
     {
-        node<Subscription> *current = subscriptions.get_head();
-        node<Subscription> *previous = NULL;
+        // Find the exact subscription and keep its predecessor for removal.
+        node<Subscription> *previous = nullptr;
+        auto *current = subscriptions.get_head();
 
-        while (current != NULL)
+        while (current != nullptr)
         {
-            Subscription existing = current->data();
-
-            if (existing.user == user && existing.topic == topic)
-            {
-                if (previous == NULL)
-                    subscriptions.head_remove();
-                else
-                    subscriptions.remove(previous);
-
-                std::cout << user << " unsubscribed from "
-                          << topic << '\n';
-                return;
-            }
+            const Subscription sub = current->data();
+            if (sub.user == user && sub.topic == topic)
+                break;
 
             previous = current;
             current = current->link();
         }
 
-        std::cout << "Subscription not found.\n";
+        if (current == nullptr)
+        {
+            std::cout << "ERROR not subscribed " << user << ' ' << topic << '\n';
+            return;
+        }
+
+        if (previous == nullptr)
+            subscriptions.head_remove();
+        else
+            subscriptions.remove(previous);
+
+        // Cancel publications held by this subscription. The published topic
+        // may be a child path, so match against subscription_topic.
+        node<PendingEvent> *previous_event = nullptr;
+        auto *event_node = pending_events.get_head();
+
+        while (event_node != nullptr)
+        {
+            const PendingEvent event = event_node->data();
+
+            // Save the next node before removal, which deletes event_node.
+            auto *next = event_node->link();
+
+            if (event.user == user && event.subscription_topic == topic)
+            {
+                if (previous_event == nullptr)
+                    pending_events.head_remove();
+                else
+                    pending_events.remove(previous_event);
+
+                // Keep the predecessor in place for consecutive removals.
+            }
+            else
+            {
+                previous_event = event_node;
+            }
+
+            event_node = next;
+        }
+
+        std::cout << "OK UNSUB " << user << ' ' << topic << '\n';
     }
 
     // Publish a message to matching subscribers.
@@ -132,49 +166,66 @@ namespace alert_service
         const std::string &topic,
         const std::string &message)
     {
-        linked_list<std::string> notified_users;
+        // Select the most specific subscription that accepts publications (i.e the most concrete/longest topic path)
+        std::map<std::string, Subscription> most_specific_by_user;
 
-        node<Subscription> *current = subscriptions.get_head();
-
-        while (current != NULL)
+        for (auto *current = subscriptions.get_head(); current != nullptr; current = current->link())
         {
-            Subscription subscription = current->data();
+            const Subscription sub = current->data();
 
-            if (topic_matches(subscription.topic, topic))
+            if (sub.has_price_threshold || !topic_matches(sub.topic, topic))
+                continue;
+
+            auto selected = most_specific_by_user.find(sub.user);
+            if (selected == most_specific_by_user.end() ||
+                sub.topic.size() > selected->second.topic.size())
             {
-                // Check whether this user was already notified.
-                bool already_notified = false;
+                most_specific_by_user.insert_or_assign(sub.user, sub);
+            }
+        }
 
-                node<std::string> *notified =
-                    notified_users.get_head();
 
-                while (notified != NULL)
-                {
-                    if (notified->data() == subscription.user)
-                    {
-                        already_notified = true;
-                        break;
-                    }
+        // Sort the publish matches by their schedule order for alerts in right order
+        std::vector<Subscription> matches;
+        matches.reserve(most_specific_by_user.size());
 
-                    notified = notified->link();
-                }
+        for (const auto &entry : most_specific_by_user)
+            matches.push_back(entry.second);
 
-                if (!already_notified)
-                {
-                    Alert new_alert;
-                    new_alert.user = subscription.user;
-                    new_alert.topic = topic;
-                    new_alert.message = message;
+        std::sort(matches.begin(), matches.end(),
+                [](const Subscription &a, const Subscription &b) {
+                    return a.schedule_order < b.schedule_order;
+                });
 
-                    alerts.head_insert(new_alert);
-                    notified_users.head_insert(subscription.user);
 
-                    std::cout << "Alert sent to "
-                              << subscription.user << '\n';
-                }
+        // Postpone matched publication alert to PendingEvent for "at" and "every" options
+        for (const Subscription &sub : matches)
+        {
+            if (sub.schedule_type == "at" || sub.schedule_type == "every")
+            {
+                const PendingEvent event{sub.user, sub.topic, topic, message};
+
+                auto *tail = pending_events.get_tail();
+                if (tail != nullptr)
+                    pending_events.insert(tail, event);
+                else
+                    pending_events.head_insert(event);
+
+                continue;
             }
 
-            current = current->link();
+
+            // Else just create and send alert right away
+            Alert alert;
+            alert.minute = current_minute;
+            alert.user = sub.user;
+            alert.topic = topic;
+            alert.message = message;
+            alerts.head_insert(alert);
+
+            std::cout << "ALERT " << format_time(alert.minute) << ' '
+                << alert.user << ' ' << alert.topic << ' '
+                << alert.message << '\n';
         }
     }
 
@@ -287,7 +338,7 @@ namespace alert_service
         }
     }
 
-    void AlertService::tick(int minutes)
+    void AlertService::tick(long long minutes)
     {
         if (minutes < 0)
         {
@@ -295,23 +346,94 @@ namespace alert_service
             return;
         }
 
-        current_minute += minutes;
+        
+        const long long new_time = current_minute + minutes;
 
-        long long day = current_minute / 1440 + 1;
-        long long hour = (current_minute % 1440) / 60;
-        long long minute = current_minute % 60;
+        
+        using SubscriptionKey = std::pair<std::string, std::string>;
 
-        std::cout << "Clock: Day " << day << " ";
+        struct DeliveryTime
+        {
+            long long minute;
+            long long order;
+        };
 
-        if (hour < 10)
-            std::cout << "0";
+        std::map<SubscriptionKey, DeliveryTime> due;
 
-        std::cout << hour << ":";
 
-        if (minute < 10)
-            std::cout << "0";
+        for (auto *current = subscriptions.get_head(); current != nullptr; current = current->link())
+        {
+            Subscription sub = current->data();
+            if (sub.schedule_type != "at" || sub.next_delivery_minute > new_time)
+                continue;
 
-        std::cout << minute << '\n';
+            due.emplace(SubscriptionKey{sub.user, sub.topic},
+                        DeliveryTime{sub.next_delivery_minute, sub.schedule_order});
+
+            const long long days = (new_time - sub.next_delivery_minute) / 1440 + 1;
+            sub.next_delivery_minute += days * 1440;
+            current->set_data(sub);
+        }
+
+        struct Delivery
+        {
+            DeliveryTime time;
+            PendingEvent event;
+        };
+        std::vector<Delivery> deliveries;
+
+        if (!due.empty())
+        {
+            node<PendingEvent> *previous = nullptr;
+            auto *current = pending_events.get_head();
+
+            while (current)
+            {
+                const PendingEvent event = current->data();
+                auto *next = current->link();
+                const auto match = due.find({event.user, event.subscription_topic});
+
+                if (match != due.end())
+                {
+                    deliveries.push_back({match->second, event});
+                    if (previous)
+                        pending_events.remove(previous);
+                    else
+                        pending_events.head_remove();
+                }
+                else
+                {
+                    previous = current;
+                }
+
+                current = next;
+            }
+        }
+
+        // Equal keys are publications for the same subscription. Stable sorting keeps those publications in their original order
+        std::stable_sort(deliveries.begin(), deliveries.end(),
+                        [](const Delivery &a, const Delivery &b) {
+                            if (a.time.minute != b.time.minute)
+                                return a.time.minute < b.time.minute;
+                            return a.time.order < b.time.order;
+                        });
+
+        for (const Delivery &delivery : deliveries)
+        {
+            const Alert alert{delivery.time.minute,
+                            delivery.event.user,
+                            delivery.event.published_topic,
+                            delivery.event.message};
+
+            alerts.head_insert(alert);
+            std::cout << "ALERT " << format_time(alert.minute) << ' '
+                    << alert.user << ' ' << alert.topic << ' '
+                    << alert.message << '\n';
+        }
+
+
+        current_minute = new_time;
+        std::cout << "TIME " << format_time(current_minute) << '\n';
     }
 
 }
