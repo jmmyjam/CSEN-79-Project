@@ -1,3 +1,4 @@
+#include "parser.h"
 
 #include "app.h"
 
@@ -44,19 +45,39 @@ namespace alert_service
         const std::string &schedule_type,
         const std::string &schedule_value)
     {
-        node<Subscription> *current = subscriptions.get_head();
 
+        node<Subscription> *current = subscriptions.get_head();
         while (current != NULL)
         {
             Subscription existing = current->data();
-
             if (existing.user == user && existing.topic == topic)
             {
-                std::cout << "ERROR already subscribed " << user << topic << std::endl;
+                std::cout << "ERROR already subscribed " << user << ' ' << topic << std::endl;
                 return;
             }
 
             current = current->link();
+        }
+
+        long long first_due = -1;
+
+        if (schedule_type == "at")
+        {
+            // The CLI passes "at 08:00", direct callers can pass "08:00".
+            const std::string time_text = schedule_value.compare(0, 3, "at ") == 0
+                ? schedule_value.substr(3)
+                : schedule_value;
+
+            long long minute_of_day = 0;
+            if (!parse_clock(time_text, minute_of_day))
+            {
+                std::cout << "ERROR bad command\n";
+                return;
+            }
+
+            first_due = current_minute - current_minute % 1440 + minute_of_day;
+            if (first_due <= current_minute)
+                first_due += 1440;
         }
 
         Subscription new_subscription;
@@ -66,10 +87,12 @@ namespace alert_service
         new_subscription.price_threshold = threshold;
         new_subscription.schedule_type = schedule_type;
         new_subscription.schedule_value = schedule_value;
+        new_subscription.next_delivery_minute = first_due;
+        new_subscription.schedule_order = next_schedule_order++;
 
         subscriptions.head_insert(new_subscription);
 
-        std::cout << user << " subscribed to " << topic << '\n';
+        std::cout << "OK SUB " << user << ' ' << topic << '\n';
     }
 
     // Remove only the exact user/topic subscription.

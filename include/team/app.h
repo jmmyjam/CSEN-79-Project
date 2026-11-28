@@ -86,7 +86,7 @@ namespace alert_service
 
         void set_price(const std::string &item, double new_price);
 
-        void tick(int minutes);
+        void tick(long long minutes);
 
         void print_inbox(const std::string &user) const;
         void print_history(const std::string &user) const;
@@ -96,7 +96,6 @@ namespace alert_service
         bool use_alt;
         topic_tree<Subscription *> topics;
         stl_topic_tree<Subscription *> alt_topics;
-
         linked_list<Subscription> subscriptions;
         linked_list<Alert> alerts;
         linked_list<PendingEvent> pending_events;
